@@ -1,3 +1,11 @@
+// Bullet Type Configuration
+const BULLET_TYPES = {
+    default: { speed: 10, width: 4, color: '#00f3ff', shape: 'circle', damage: 10 },
+    star: { speed: 15, width: 12, color: '#ffff00', shape: 'star', damage: 15 },
+    heart: { speed: 8, width: 16, color: '#ff69b4', shape: 'heart', damage: 20 },
+    laser: { speed: 25, width: 8, color: '#00ff00', shape: 'line', damage: 8 }
+};
+
 class Entity {
     constructor(x, y, radius, color) {
         this.x = x;
@@ -20,15 +28,127 @@ class Entity {
     }
 }
 
+// Bullet Package - collectable power-up
+class BulletPackage extends Entity {
+    constructor(x, y, bulletType) {
+        const config = BULLET_TYPES[bulletType];
+        super(x, y, 25, config.color);
+        this.bulletType = bulletType;
+        this.ammoCount = Math.floor(Math.random() * 31) + 20; // 20-50
+        this.lifespan = 15000; // 15 seconds
+        this.spawnTime = Date.now();
+        this.floatOffset = 0;
+    }
+
+    update() {
+        // Floating animation
+        this.floatOffset += 0.05;
+
+        // Check lifespan
+        if (Date.now() - this.spawnTime > this.lifespan) {
+            this.markedForDeletion = true;
+        }
+    }
+
+    draw(ctx) {
+        const floatY = this.y + Math.sin(this.floatOffset) * 5;
+
+        ctx.save();
+        ctx.translate(this.x, floatY);
+
+        // Pulsing glow effect
+        const pulse = 0.5 + Math.sin(this.floatOffset * 2) * 0.3;
+        ctx.shadowBlur = 20 + pulse * 10;
+        ctx.shadowColor = this.color;
+
+        // Outer ring
+        ctx.beginPath();
+        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+        ctx.strokeStyle = this.color;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Inner fill
+        ctx.fillStyle = `rgba(0, 0, 0, 0.7)`;
+        ctx.fill();
+
+        // Draw bullet type icon
+        this.drawIcon(ctx);
+
+        // Ammo count text
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 10px Orbitron, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`x${this.ammoCount}`, 0, this.radius + 15);
+
+        ctx.restore();
+    }
+
+    drawIcon(ctx) {
+        ctx.fillStyle = this.color;
+
+        switch (this.bulletType) {
+            case 'star':
+                this.drawStar(ctx, 0, 0, 5, 12, 6);
+                break;
+            case 'heart':
+                this.drawHeart(ctx, 0, 0, 12);
+                break;
+            case 'laser':
+                ctx.fillRect(-10, -3, 20, 6);
+                break;
+        }
+    }
+
+    drawStar(ctx, cx, cy, spikes, outerRadius, innerRadius) {
+        let rot = Math.PI / 2 * 3;
+        let x = cx;
+        let y = cy;
+        const step = Math.PI / spikes;
+
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - outerRadius);
+        for (let i = 0; i < spikes; i++) {
+            x = cx + Math.cos(rot) * outerRadius;
+            y = cy + Math.sin(rot) * outerRadius;
+            ctx.lineTo(x, y);
+            rot += step;
+
+            x = cx + Math.cos(rot) * innerRadius;
+            y = cy + Math.sin(rot) * innerRadius;
+            ctx.lineTo(x, y);
+            rot += step;
+        }
+        ctx.lineTo(cx, cy - outerRadius);
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    drawHeart(ctx, cx, cy, size) {
+        ctx.beginPath();
+        ctx.moveTo(cx, cy + size / 4);
+        ctx.bezierCurveTo(cx, cy - size / 2, cx - size, cy - size / 2, cx - size, cy + size / 8);
+        ctx.bezierCurveTo(cx - size, cy + size / 2, cx, cy + size, cx, cy + size);
+        ctx.bezierCurveTo(cx, cy + size, cx + size, cy + size / 2, cx + size, cy + size / 8);
+        ctx.bezierCurveTo(cx + size, cy - size / 2, cx, cy - size / 2, cx, cy + size / 4);
+        ctx.closePath();
+        ctx.fill();
+    }
+}
+
 class Projectile extends Entity {
-    constructor(x, y, angle, speed, color, owner) {
-        super(x, y, 4, color);
+    constructor(x, y, angle, speed, color, owner, bulletType = 'default') {
+        const config = BULLET_TYPES[bulletType];
+        super(x, y, config.width, color);
         this.velocity = {
-            x: Math.cos(angle) * speed,
-            y: Math.sin(angle) * speed
+            x: Math.cos(angle) * config.speed,
+            y: Math.sin(angle) * config.speed
         };
+        this.angle = angle;
         this.owner = owner; // 'player' or 'enemy'
-        this.damage = 10;
+        this.damage = config.damage;
+        this.bulletType = bulletType;
+        this.shape = config.shape;
     }
 
     update(canvasWidth, canvasHeight) {
@@ -43,12 +163,92 @@ class Projectile extends Entity {
 
     draw(ctx) {
         ctx.save();
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = this.color;
+        ctx.fillStyle = this.color;
+
+        switch (this.shape) {
+            case 'star':
+                this.drawStar(ctx);
+                break;
+            case 'heart':
+                this.drawHeart(ctx);
+                break;
+            case 'line':
+                this.drawLaser(ctx);
+                break;
+            default:
+                this.drawCircle(ctx);
+        }
+
+        ctx.restore();
+    }
+
+    drawCircle(ctx) {
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = this.color;
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = this.color;
         ctx.fill();
+    }
+
+    drawStar(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.angle);
+
+        const spikes = 5;
+        const outerRadius = this.radius;
+        const innerRadius = this.radius / 2;
+        let rot = Math.PI / 2 * 3;
+        const step = Math.PI / spikes;
+
+        ctx.beginPath();
+        ctx.moveTo(0, -outerRadius);
+        for (let i = 0; i < spikes; i++) {
+            let x = Math.cos(rot) * outerRadius;
+            let y = Math.sin(rot) * outerRadius;
+            ctx.lineTo(x, y);
+            rot += step;
+
+            x = Math.cos(rot) * innerRadius;
+            y = Math.sin(rot) * innerRadius;
+            ctx.lineTo(x, y);
+            rot += step;
+        }
+        ctx.lineTo(0, -outerRadius);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+    }
+
+    drawHeart(ctx) {
+        const size = this.radius * 0.8;
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.angle + Math.PI / 2);
+
+        ctx.beginPath();
+        ctx.moveTo(0, size / 4);
+        ctx.bezierCurveTo(0, -size / 2, -size, -size / 2, -size, size / 8);
+        ctx.bezierCurveTo(-size, size / 2, 0, size, 0, size);
+        ctx.bezierCurveTo(0, size, size, size / 2, size, size / 8);
+        ctx.bezierCurveTo(size, -size / 2, 0, -size / 2, 0, size / 4);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+    }
+
+    drawLaser(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.angle);
+
+        // Main beam
+        ctx.fillRect(-this.radius * 2, -this.radius / 2, this.radius * 4, this.radius);
+
+        // Glow core
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(-this.radius * 2, -this.radius / 4, this.radius * 4, this.radius / 2);
+
         ctx.restore();
     }
 }
@@ -150,6 +350,9 @@ class Player extends Tank {
             s: false,
             d: false
         };
+        // Bullet system
+        this.currentBulletType = 'default';
+        this.specialAmmo = 0;
     }
 
     update(canvasWidth, canvasHeight) {
@@ -166,6 +369,43 @@ class Player extends Tank {
         if (this.keys.w || this.keys.s || this.keys.a || this.keys.d) {
             // Could add body rotation logic here, but for now fixed or simple is fine
         }
+    }
+
+    pickupBullet(bulletPackage) {
+        this.currentBulletType = bulletPackage.bulletType;
+        this.specialAmmo = bulletPackage.ammoCount;
+    }
+
+    shoot(projectiles) {
+        const now = Date.now();
+        if (now - this.lastShot > this.fireRate) {
+            const tipX = this.x + Math.cos(this.turretAngle) * (this.radius * 1.5);
+            const tipY = this.y + Math.sin(this.turretAngle) * (this.radius * 1.5);
+
+            const config = BULLET_TYPES[this.currentBulletType];
+            projectiles.push(new Projectile(
+                tipX,
+                tipY,
+                this.turretAngle,
+                config.speed,
+                config.color,
+                'player',
+                this.currentBulletType
+            ));
+
+            // Decrement ammo for special bullets
+            if (this.currentBulletType !== 'default') {
+                this.specialAmmo--;
+                if (this.specialAmmo <= 0) {
+                    this.currentBulletType = 'default';
+                    this.specialAmmo = 0;
+                }
+            }
+
+            this.lastShot = now;
+            return true;
+        }
+        return false;
     }
 }
 
