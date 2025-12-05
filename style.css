@@ -135,6 +135,13 @@ button:hover {
     transition: width 0.2s ease;
 }
 
+#health-pct {
+    font-size: 1rem;
+    color: var(--neon-red);
+    text-shadow: 0 0 5px var(--neon-red);
+    min-width: 50px;
+}
+
 .hidden {
     display: none !important;
 }

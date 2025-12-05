@@ -10,6 +10,7 @@ const restartBtn = document.getElementById('restart-btn');
 const scoreEl = document.getElementById('score');
 const finalScoreEl = document.getElementById('final-score');
 const healthFill = document.getElementById('health-fill');
+const healthPctEl = document.getElementById('health-pct');
 const bulletTypeEl = document.getElementById('bullet-type');
 const ammoCountEl = document.getElementById('ammo-count');
 
@@ -20,7 +21,9 @@ let animationId;
 let lastTime = 0;
 let enemySpawnTimer = 0;
 let bulletPackageSpawnTimer = 0;
+let firstAidKitSpawnTimer = 0;
 const PACKAGE_SPAWN_INTERVAL = 8000; // 8 seconds
+const FIRST_AID_SPAWN_INTERVAL = 10000; // 10 seconds
 
 // Entities
 let player;
@@ -28,6 +31,7 @@ let projectiles = [];
 let enemies = [];
 let particles = [];
 let bulletPackages = [];
+let firstAidKits = [];
 
 // Resize Canvas
 function resize() {
@@ -78,10 +82,13 @@ function initGame() {
     enemies = [];
     particles = [];
     bulletPackages = [];
+    firstAidKits = [];
     bulletPackageSpawnTimer = 0;
+    firstAidKitSpawnTimer = 0;
     score = 0;
     scoreEl.innerText = score;
     healthFill.style.width = '100%';
+    healthPctEl.innerText = '100%';
     updateBulletHUD();
     gameActive = true;
 
@@ -120,6 +127,19 @@ function spawnBulletPackage() {
     const types = ['star', 'heart', 'laser'];
     const type = types[Math.floor(Math.random() * types.length)];
     bulletPackages.push(new BulletPackage(x, y, type));
+}
+
+function spawnFirstAidKit() {
+    const margin = 100;
+    const x = Utils.randomRange(margin, canvas.width - margin);
+    const y = Utils.randomRange(margin, canvas.height - margin);
+    firstAidKits.push(new FirstAidKit(x, y));
+}
+
+function updateHealthDisplay() {
+    const healthPct = Math.max(0, Math.round(player.health));
+    healthFill.style.width = `${healthPct}%`;
+    healthPctEl.innerText = `${healthPct}%`;
 }
 
 function createExplosion(x, y, color) {
@@ -184,6 +204,30 @@ function animate(timeStamp) {
         bulletPackageSpawnTimer = 0;
     }
 
+    // First Aid Kit Spawning
+    firstAidKitSpawnTimer += deltaTime;
+    if (firstAidKitSpawnTimer > FIRST_AID_SPAWN_INTERVAL) {
+        spawnFirstAidKit();
+        firstAidKitSpawnTimer = 0;
+    }
+
+    // First Aid Kits - update, draw, and check pickup
+    firstAidKits.forEach((kit, index) => {
+        kit.update();
+        kit.draw(ctx);
+
+        if (kit.markedForDeletion) {
+            firstAidKits.splice(index, 1);
+        } else if (Utils.circleCollision(player, kit)) {
+            // Heal player (cap at max health)
+            player.health = Math.min(player.maxHealth, player.health + kit.healAmount);
+            firstAidKits.splice(index, 1);
+            updateHealthDisplay();
+            // Create green heal particles
+            createExplosion(kit.x, kit.y, kit.color);
+        }
+    });
+
     // Bullet Packages - update, draw, and check pickup
     bulletPackages.forEach((pkg, index) => {
         pkg.update();
@@ -208,7 +252,7 @@ function animate(timeStamp) {
         // Collision with Player
         if (Utils.circleCollision(player, enemy)) {
             player.health -= 1; // Contact damage
-            healthFill.style.width = `${player.health}%`;
+            updateHealthDisplay();
             if (player.health <= 0) gameOver();
         }
 
@@ -230,7 +274,7 @@ function animate(timeStamp) {
             createExplosion(player.x, player.y, '#ff0000'); // Hit effect
             projectiles.splice(pIndex, 1);
             player.health -= p.damage;
-            healthFill.style.width = `${player.health}%`;
+            updateHealthDisplay();
             if (player.health <= 0) {
                 createExplosion(player.x, player.y, player.color);
                 gameOver();
