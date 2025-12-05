@@ -1,0 +1,140 @@
+:root {
+    --neon-blue: #00f3ff;
+    --neon-pink: #ff00ff;
+    --neon-green: #00ff00;
+    --neon-red: #ff0000;
+    --bg-color: #0a0a0a;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--neon-blue);
+    font-family: 'Orbitron', sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#game-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+canvas {
+    display: block;
+    background: radial-gradient(circle at center, #1a1a1a 0%, #000000 100%);
+}
+
+#ui-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.8);
+    pointer-events: auto;
+    transition: opacity 0.3s ease;
+}
+
+.screen.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.screen.active {
+    opacity: 1;
+}
+
+h1 {
+    font-size: 4rem;
+    text-shadow: 0 0 10px var(--neon-blue), 0 0 20px var(--neon-blue);
+    margin-bottom: 20px;
+    letter-spacing: 5px;
+}
+
+p {
+    font-size: 1.2rem;
+    margin-bottom: 40px;
+    color: #fff;
+    text-shadow: 0 0 5px var(--neon-pink);
+}
+
+button {
+    background: transparent;
+    border: 2px solid var(--neon-green);
+    color: var(--neon-green);
+    padding: 15px 40px;
+    font-size: 1.5rem;
+    font-family: 'Orbitron', sans-serif;
+    cursor: pointer;
+    text-transform: uppercase;
+    box-shadow: 0 0 10px var(--neon-green);
+    transition: all 0.2s ease;
+}
+
+button:hover {
+    background: var(--neon-green);
+    color: #000;
+    box-shadow: 0 0 20px var(--neon-green), 0 0 40px var(--neon-green);
+}
+
+#hud {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    display: flex;
+    justify-content: space-between;
+    pointer-events: none;
+}
+
+.hud-item {
+    font-size: 1.5rem;
+    text-shadow: 0 0 5px var(--neon-blue);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#health-bar {
+    width: 200px;
+    height: 20px;
+    border: 2px solid var(--neon-red);
+    background: rgba(255, 0, 0, 0.1);
+    box-shadow: 0 0 5px var(--neon-red);
+}
+
+#health-fill {
+    width: 100%;
+    height: 100%;
+    background: var(--neon-red);
+    box-shadow: 0 0 10px var(--neon-red);
+    transition: width 0.2s ease;
+}
+
+.hidden {
+    display: none !important;
+}
