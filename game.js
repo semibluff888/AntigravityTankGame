@@ -10,6 +10,8 @@ const restartBtn = document.getElementById('restart-btn');
 const scoreEl = document.getElementById('score');
 const finalScoreEl = document.getElementById('final-score');
 const healthFill = document.getElementById('health-fill');
+const bulletTypeEl = document.getElementById('bullet-type');
+const ammoCountEl = document.getElementById('ammo-count');
 
 // Game State
 let gameActive = false;
@@ -17,12 +19,15 @@ let score = 0;
 let animationId;
 let lastTime = 0;
 let enemySpawnTimer = 0;
+let bulletPackageSpawnTimer = 0;
+const PACKAGE_SPAWN_INTERVAL = 8000; // 8 seconds
 
 // Entities
 let player;
 let projectiles = [];
 let enemies = [];
 let particles = [];
+let bulletPackages = [];
 
 // Resize Canvas
 function resize() {
@@ -72,9 +77,12 @@ function initGame() {
     projectiles = [];
     enemies = [];
     particles = [];
+    bulletPackages = [];
+    bulletPackageSpawnTimer = 0;
     score = 0;
     scoreEl.innerText = score;
     healthFill.style.width = '100%';
+    updateBulletHUD();
     gameActive = true;
 
     startScreen.classList.add('hidden');
@@ -84,6 +92,12 @@ function initGame() {
     hud.classList.remove('hidden');
 
     animate(0);
+}
+
+function updateBulletHUD() {
+    bulletTypeEl.innerText = player.currentBulletType.toUpperCase();
+    bulletTypeEl.style.color = BULLET_TYPES[player.currentBulletType].color;
+    ammoCountEl.innerText = player.currentBulletType === 'default' ? '∞' : player.specialAmmo;
 }
 
 function spawnEnemy() {
@@ -97,6 +111,15 @@ function spawnEnemy() {
         y = Math.random() < 0.5 ? 0 - radius : canvas.height + radius;
     }
     enemies.push(new Enemy(x, y, player));
+}
+
+function spawnBulletPackage() {
+    const margin = 100;
+    const x = Utils.randomRange(margin, canvas.width - margin);
+    const y = Utils.randomRange(margin, canvas.height - margin);
+    const types = ['star', 'heart', 'laser'];
+    const type = types[Math.floor(Math.random() * types.length)];
+    bulletPackages.push(new BulletPackage(x, y, type));
 }
 
 function createExplosion(x, y, color) {
@@ -154,6 +177,27 @@ function animate(timeStamp) {
         enemySpawnTimer = 0;
     }
 
+    // Bullet Package Spawning
+    bulletPackageSpawnTimer += deltaTime;
+    if (bulletPackageSpawnTimer > PACKAGE_SPAWN_INTERVAL) {
+        spawnBulletPackage();
+        bulletPackageSpawnTimer = 0;
+    }
+
+    // Bullet Packages - update, draw, and check pickup
+    bulletPackages.forEach((pkg, index) => {
+        pkg.update();
+        pkg.draw(ctx);
+
+        if (pkg.markedForDeletion) {
+            bulletPackages.splice(index, 1);
+        } else if (Utils.circleCollision(player, pkg)) {
+            player.pickupBullet(pkg);
+            bulletPackages.splice(index, 1);
+            updateBulletHUD();
+        }
+    });
+
     enemies.forEach((enemy, index) => {
         enemy.update();
         enemy.draw(ctx);
@@ -200,6 +244,9 @@ function animate(timeStamp) {
         p.draw(ctx);
         if (p.markedForDeletion) particles.splice(index, 1);
     });
+
+    // Update bullet HUD after shooting
+    updateBulletHUD();
 }
 
 // Event Listeners
