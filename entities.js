@@ -136,6 +136,90 @@ class BulletPackage extends Entity {
     }
 }
 
+// First Aid Kit Configuration
+const FIRST_AID_SIZES = {
+    small: { radius: 15, healAmount: 15, color: '#32CD32' },
+    medium: { radius: 22, healAmount: 30, color: '#00FF7F' },
+    large: { radius: 30, healAmount: 50, color: '#7FFF00' }
+};
+
+// First Aid Kit - collectable health power-up
+class FirstAidKit extends Entity {
+    constructor(x, y) {
+        const sizes = ['small', 'medium', 'large'];
+        const sizeType = sizes[Math.floor(Math.random() * sizes.length)];
+        const config = FIRST_AID_SIZES[sizeType];
+
+        super(x, y, config.radius, config.color);
+        this.sizeType = sizeType;
+        this.healAmount = config.healAmount;
+        this.lifespan = 12000; // 12 seconds
+        this.spawnTime = Date.now();
+        this.floatOffset = 0;
+        this.pulseOffset = 0;
+    }
+
+    update() {
+        // Floating animation
+        this.floatOffset += 0.05;
+        this.pulseOffset += 0.08;
+
+        // Check lifespan
+        if (Date.now() - this.spawnTime > this.lifespan) {
+            this.markedForDeletion = true;
+        }
+    }
+
+    draw(ctx) {
+        const floatY = this.y + Math.sin(this.floatOffset) * 5;
+        const pulse = 0.8 + Math.sin(this.pulseOffset) * 0.2;
+
+        ctx.save();
+        ctx.translate(this.x, floatY);
+
+        // Pulsing glow effect
+        ctx.shadowBlur = 15 + pulse * 10;
+        ctx.shadowColor = this.color;
+
+        // Outer ring with pulse
+        ctx.beginPath();
+        ctx.arc(0, 0, this.radius * pulse, 0, Math.PI * 2);
+        ctx.strokeStyle = this.color;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Inner fill (dark background)
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.fill();
+
+        // Draw cross icon
+        this.drawCross(ctx, pulse);
+
+        // Heal amount text
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 10px Orbitron, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.shadowBlur = 5;
+        ctx.fillText(`+${this.healAmount}HP`, 0, this.radius + 18);
+
+        ctx.restore();
+    }
+
+    drawCross(ctx, pulse) {
+        const crossSize = this.radius * 0.6 * pulse;
+        const crossWidth = crossSize * 0.4;
+
+        ctx.fillStyle = this.color;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = this.color;
+
+        // Vertical bar
+        ctx.fillRect(-crossWidth / 2, -crossSize, crossWidth, crossSize * 2);
+        // Horizontal bar
+        ctx.fillRect(-crossSize, -crossWidth / 2, crossSize * 2, crossWidth);
+    }
+}
+
 class Projectile extends Entity {
     constructor(x, y, angle, speed, color, owner, bulletType = 'default') {
         const config = BULLET_TYPES[bulletType];
